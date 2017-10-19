@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Configuring for BeagleBone"
-cd SeniorDesign/setup
+cd ~/SeniorDesign/setup
 ./ipMasquerade.sh enp0s3
 ./firstssh.sh
 git config --global user.email "email@example.com"
