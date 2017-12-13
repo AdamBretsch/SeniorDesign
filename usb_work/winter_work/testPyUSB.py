@@ -3,8 +3,12 @@ import usb.core
 import usb.util
 
 # find our device
+# usb drive
 #dev = usb.core.find(idVendor=0x0781, idProduct=0x5583)
+# mouse dongle
 dev = usb.core.find(idVendor=0x046d, idProduct=0xc52f)
+# medical device
+#dev = usb.core.find(idVendor=0x173a, idProduct=0x21d5)
 
 # was it found?
 if dev is None:
