@@ -1,6 +1,6 @@
 #!/bin/bash
-# toggles led usr2
-cd /sys/class/leds/beaglebone\:green\:usr2/
+# toggles led usr0 
+cd /sys/class/leds/beaglebone\:green\:usr0/
 echo none > trigger
 if grep -q "0" brightness
  then 

@@ -1,0 +1,12 @@
+this
+should
+be
+printed
+out
+one
+line
+at
+a
+time
+except for this line
+theend
