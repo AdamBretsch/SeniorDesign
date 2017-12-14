@@ -20,12 +20,12 @@ public class ClientSocket {
         bool status = true ; 
         try { 
 	    // the 192 address is for ethernet over usb
-	    // server = new TcpClient("192.168.7.1", 9009);
+	    server = new TcpClient("10.0.2.15", 9009);
 	    // the 10 address is for the ethernet only connection
-	    server = new TcpClient("10.42.0.1", 9009);
+	    // server = new TcpClient("10.42.0.1", 9009);
 	    Console.WriteLine("Connected to Server");
         } catch { 
-            Console.WriteLine("Failed to Connect to server{0}:999","localhost") ; 
+            Console.WriteLine("Failed to Connect to server") ; 
             return ; 
         } 
         networkStream = server.GetStream(); 
@@ -38,6 +38,9 @@ public class ClientSocket {
                 servermessage = streamreader.ReadLine() ; 
                 
                 switch (servermessage) {
+                    case "medic:":
+                        getData();
+                        break;
                     case "VID:":
                         getVID();
                         break;
@@ -71,6 +74,12 @@ public class ClientSocket {
         networkStream.Close() ; 
     }
     
+    protected void getData() {
+        runScript("medicalReader.py");
+        string path = Directory.GetCurrentDirectory() + "/usbOut.txt";
+        sendFile(path);
+    }
+    
     protected void getVID() {
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         sendData(lines[0]);
@@ -94,9 +103,27 @@ public class ClientSocket {
         System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + @"/temp.txt", myArr);
     }
     
-    public bool sendData(string data) {
+    protected bool sendData(string data) {
             streamwriter.WriteLine(data) ;
             streamwriter.Flush() ; 
             return true;
+    }
+    
+    protected bool sendFile(string fileName) {
+        Console.WriteLine(fileName);
+        if(!File.Exists(fileName)) {
+            Console.Write("!FILE NOT FOUND!");
+            return false;
         }
+        char[] splitOn = {'/'};
+        string[] splitName = fileName.Split(splitOn);
+        // seperated the path from the aaa.txt we want here
+        sendData(splitName[splitName.Length - 1]);
+        string[] lines = System.IO.File.ReadAllLines(fileName);
+        foreach (string line in lines) {
+            sendData(line);
+        }
+        sendData("TransmitOver:");
+        return true;
+    }
 } 
