@@ -20,12 +20,18 @@ public class ClientSocket {
         bool status = true ; 
         try { 
 	    // the 192 address is for ethernet over usb
+<<<<<<< HEAD
 	    server = new TcpClient("192.168.7.1", 9009);
 	    // the 10 address is for the ethernet only connection
 	   // server = new TcpClient("10.42.0.1", 9009);
+=======
+	    server = new TcpClient("10.0.2.15", 9009);
+	    // the 10 address is for the ethernet only connection
+	    // server = new TcpClient("10.42.0.1", 9009);
+>>>>>>> 5328b01e99996beac745f7019c597ce1c8f90ce0
 	    Console.WriteLine("Connected to Server");
         } catch { 
-            Console.WriteLine("Failed to Connect to server{0}:999","localhost") ; 
+            Console.WriteLine("Failed to Connect to server") ; 
             return ; 
         } 
         networkStream = server.GetStream(); 
@@ -38,6 +44,9 @@ public class ClientSocket {
                 servermessage = streamreader.ReadLine() ; 
                 
                 switch (servermessage) {
+                    case "medic:":
+                        getData();
+                        break;
                     case "VID:":
                         getVID();
                         break;
@@ -111,6 +120,12 @@ public class ClientSocket {
         sendData(lines[0]);
     }
     
+    protected void getData() {
+        runScript("medicalReader.py");
+        string path = Directory.GetCurrentDirectory() + "/usbOut.txt";
+        sendFile(path);
+    }
+    
     protected void getVID() {
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         // need to get real vid here
@@ -152,11 +167,19 @@ public class ClientSocket {
     }
     
     protected bool sendData(string data) {
+<<<<<<< HEAD
         streamwriter.WriteLine(data) ;
         streamwriter.Flush() ; 
         return true;
     }
 
+=======
+            streamwriter.WriteLine(data) ;
+            streamwriter.Flush() ; 
+            return true;
+    }
+    
+>>>>>>> 5328b01e99996beac745f7019c597ce1c8f90ce0
     protected bool sendFile(string fileName) {
         Console.WriteLine(fileName);
         if(!File.Exists(fileName)) {
@@ -174,6 +197,7 @@ public class ClientSocket {
         sendData("TransmitOver:");
         return true;
     }
+<<<<<<< HEAD
 
     protected void turnPower() {
         string onOrOff = streamreader.ReadLine();
@@ -182,3 +206,6 @@ public class ClientSocket {
         Console.WriteLine(onOrOff + " " + device);
     }
 } 
+=======
+} 
+>>>>>>> 5328b01e99996beac745f7019c597ce1c8f90ce0
