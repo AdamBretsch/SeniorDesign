@@ -9,7 +9,7 @@
 if [ $# -eq 0 ] ; then
 echo "Usage: $0 interface (such as eth0 or wlan0)"
 exit 1
-fi
+fiz
 
 interface=$1
 hostAddr=192.168.7.1

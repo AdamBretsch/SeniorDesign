@@ -1,0 +1,9 @@
+VID: 867-5309
+PID: 3.1415926
+that's the VID number
+and then the PID number
+you've gone too far
+stop srsly
+no
+dnt
+y
