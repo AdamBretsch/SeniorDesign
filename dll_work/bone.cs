@@ -4,45 +4,75 @@ using System.Net.Sockets ;
 using System.IO ; 
 using System.Diagnostics;
 using System.Collections;
+using System.Security.Permissions;
+using System.Globalization;
 public class ClientSocket {
     
     protected NetworkStream networkStream; 
-    protected NetworkStream secondStream;
+    protected NetworkStream sendStream;
+    protected NetworkStream getStream;
+
     protected StreamReader streamreader; 
     protected StreamWriter streamwriter;
-    // protected BinaryWriter binarywriter;
-    // protected BinaryReader binaryreader;
+    protected StreamWriter sendwriter;
+    protected StreamReader getreader;
+
+
+    protected FileSystemWatcher watcher;
+
     protected string servermessage = "";
     protected byte[] bytes =  new byte[32] {0x20, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x50};
     
     public static void Main(string[] args) {
         ClientSocket cs = new ClientSocket();
     }
+
+    [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
+    private void configureWatcher() {
+        string path = "/home/debian/SeniorDesign/teensyTransfer/pyWrite";
+        watcher = new FileSystemWatcher(path);
+        watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+        watcher.Filter = "*.txt";
+        watcher.Changed += new FileSystemEventHandler(OnFileChanged);
+        watcher.Created += new FileSystemEventHandler(OnFileChanged);
+        watcher.EnableRaisingEvents = true;
+    }
     
+    [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
     public ClientSocket() { 
-        TcpClient server; 
-        TcpClient secondServer;
+        TcpClient server;
+        TcpClient sendServer;
+        TcpClient getServer;
         bool status = true ; 
         try { 
         // the 192 address is for ethernet over usb
         server = new TcpClient("192.168.7.1", 9009);
-        secondServer = new TcpClient("192.168.7.1", 9008);
+        sendServer = new TcpClient("192.168.7.1", 9008);
+        getServer = new TcpClient("192.168.7.1", 9007);
         // the 10 address is for the ethernet only connection
-       // server = new TcpClient("10.42.0.1", 9009);
+        // server = new TcpClient("10.42.0.1", 9009);
         Console.WriteLine("Connected to Server");
         } catch { 
-            Console.WriteLine("Failed to Connect to server{0}:999","localhost") ; 
+            Console.WriteLine("Failed to Connect to server"); 
             return ; 
         } 
         networkStream = server.GetStream(); 
-        secondStream = secondServer.GetStream();
+        sendStream = sendServer.GetStream();
+        getStream = getServer.GetStream();
+
         streamreader = new StreamReader(networkStream) ; 
         streamwriter = new StreamWriter(networkStream) ;
+        sendwriter = new StreamWriter(sendStream);
+        getreader = new StreamReader(getStream);
+        Console.WriteLine("Streams Created");
+        configureWatcher();
         try 
         { 
+            // this while loop recieves commands for the duration
+            // that the beaglebone is running
             while(status) 
             { 
-                servermessage = streamreader.ReadLine() ; 
+                servermessage = getData(); 
                 
                 switch (servermessage) {
                     case "VID:":
@@ -63,11 +93,8 @@ public class ClientSocket {
                     case "POWER:":
                         turnPower();
                         break;
-                    case "RECEIVE:":
-                        sendBytes(bytes);
-                        break;
                     case "medic:":
-                        getData();
+                        getMedData();
                         break;                        
                     case "bye":
                         status = false;
@@ -81,6 +108,7 @@ public class ClientSocket {
                     case "green":
                         runScript("usr2.sh");
                         break;
+                    
                     default:
                         Console.WriteLine("Host: " + servermessage);
                         break;
@@ -91,12 +119,20 @@ public class ClientSocket {
         { 
             Console.WriteLine("Exception reading from the server") ; 
         } 
-        streamreader.Close() ; 
-        streamwriter.Close() ; 
-        networkStream.Close() ; 
+        streamreader.Close(); 
+        getreader.Close();
+        streamwriter.Close();
+        // sendwriter.Close(); 
+        networkStream.Close();
+        // sendStream.Close();
+        getStream.Close(); 
     }
 
-    protected void getData() {
+    protected string getData() {
+        return streamreader.ReadLine();
+    }
+
+    protected void getMedData() {
         runScript("medicalReader.py");
         string path = Directory.GetCurrentDirectory() + "/usbOut.txt";
         sendFile(path);
@@ -113,28 +149,40 @@ public class ClientSocket {
     }
 
     protected void getPID() {
-        int device = int.Parse(streamreader.ReadLine());
+        int device = int.Parse(getData());
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         // need to get real pid here
         sendData(lines[1]);
     }
     
     protected void getVID() {
-        int device = int.Parse(streamreader.ReadLine());
+        int device = int.Parse(getData());
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         // need to get real vid here
         sendData(lines[0]);
     }
+
+    private static void OnFileChanged(object source, FileSystemEventArgs e) {
+        Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
+        string[] stringData = System.IO.File.ReadAllLines(e.FullPath);
+        byte[] data = new byte[stringData.Length];
+        for(int i = 0; i < stringData.Length; i++) {
+            data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
+        }
+        sendPyBytes(data);
+    }
     
     protected void receiveBytes() {
-        string device = streamreader.ReadLine();
-        byte[] result = new byte[32];
-        secondStream.Read(result, 0, 32);
+        string device = getData();
+        int size = int.Parse(getData());
+        byte[] result = new byte[size];
+        getStream.Read(result, 0, size);
         // need to do something with received bytes here
         Console.WriteLine("Received Bytes to send to: " + device);
-        for(int i = 0; i < 32; i++) {
+        for(int i = 0; i < size; i++) {
             Console.WriteLine(result[i].ToString("X"));
         }
+        sendPyBytes(result);
     }
 
     protected void runScript(string shell) {
@@ -145,19 +193,21 @@ public class ClientSocket {
     }
     
     protected void saveFile() {
-        servermessage = streamreader.ReadLine();
+        servermessage = getData();
         ArrayList lines = new ArrayList();
         while(servermessage != "TransmitOver:"){
             lines.Add(servermessage);
-            servermessage = streamreader.ReadLine();
+            servermessage = getData();
         }
-        string[] myArr = (string[]) lines.ToArray( typeof( string ) );
+        string[] myArr = (string[]) lines.ToArray(typeof(string));
         System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + @"/temp.txt", myArr);
     }
 
-    protected void sendBytes(byte[] byteArray) {
+    protected void sendBytes(int device, byte[] byteArray) {
         // need to actually get real bytes here
-        secondStream.Write(byteArray, 0, 32);
+        sendwriter.WriteLine("" + device);
+        sendwriter.WriteLine(byteArray.Length);
+        sendStream.Write(byteArray, 0, byteArray.Length);
     }
     
     protected bool sendData(string data) {
@@ -184,9 +234,18 @@ public class ClientSocket {
         return true;
     }
 
+    protected static void sendPyBytes(byte[] data) {
+        string path = "/home/debian/SeniorDesign/teensyTransfer/csWrite/out.txt";
+        string[] converted = new string[data.Length];
+        for (int i = 0; i < data.Length; i++) {
+            converted[i] = data[i].ToString("X");
+        }
+        System.IO.File.WriteAllLines(path, converted);
+    }
+
     protected void turnPower() {
-        string onOrOff = streamreader.ReadLine();
-        int id = int.Parse(streamreader.ReadLine());
+        string onOrOff = getData();
+        int id = int.Parse(getData());
         // need to actually turn the devices on or off here
         Console.WriteLine("Device " + id + ": " + onOrOff);
         if ((id < 1) || (id > 4)) {

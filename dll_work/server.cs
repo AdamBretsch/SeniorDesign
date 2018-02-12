@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets ;
 using System.Collections;
 using System.IO ; 
+using System.Threading;
 
 namespace ECEServer {
     public class ByteEventArgs : EventArgs {
@@ -19,15 +20,24 @@ namespace ECEServer {
 
         protected IPAddress ipa;
         protected int port;
-        protected int port2;
+        protected int receivingPort;
+        protected int sendingPort;
+
         protected TcpListener tcpListener;
-        protected TcpListener secondTcpListener;
+        protected TcpListener getTcpListener;
+        protected TcpListener giveTcpListener;
+
         protected TcpClient client;
-        protected TcpClient secondClient;
+        protected TcpClient getClient;
+        protected TcpClient giveClient;
+
         protected NetworkStream networkStream;
-        protected NetworkStream secondStream;
+        protected NetworkStream getStream;
+        protected NetworkStream giveStream;
+
         protected StreamWriter streamwriter;
         protected StreamReader streamreader;
+        protected Thread incomingThread;
         public event EventHandler<ByteEventArgs> OnBytesReceived;
 
         
@@ -43,17 +53,20 @@ namespace ECEServer {
             ipa: ethernet outgoing IPAdress
                 ie: "10.42.0.1" (actual ethernet port)
                 ie: "192.168.7.1" (ethernet over usb)
-            port: port number to start server on*
+            portnum: port number to start server on*
                 ie: 9009
+            secondPort: port number for the bone to send byte[] to
+            thirdPort: port number used for this computer to send byte[] to the beaglebone
             *The port number has been set on the beaglebone
             and would have to be changed there if using a port
             number other that 9009.
         */
-        public CommServer(string ipas, int portnum, int secondPort)
+        public CommServer(string ipas, int portnum, int secondPort, int thirdPort)
         {
             ipa = IPAddress.Parse(ipas);
             port = portnum;
-            port2 = secondPort;
+            receivingPort = secondPort;
+            sendingPort = thirdPort;
             connect();
         }
 
@@ -71,18 +84,33 @@ namespace ECEServer {
         public bool connect() {
             try
             {
+                // for sending strings and commands
                 tcpListener = new TcpListener(ipa, port);
                 tcpListener.Start();
-                secondTcpListener = new TcpListener(ipa, port2);
-                secondTcpListener.Start();
+
+                // for receiving byte[] data from bone (connection controlled by bone)
+                getTcpListener = new TcpListener(ipa, receivingPort);
+                getTcpListener.Start();
+                
+                // for sending byte[] data to bone (paired with command)
+                giveTcpListener = new TcpListener(ipa, sendingPort);
+                giveTcpListener.Start();
+
                 Console.WriteLine("Server Started") ;
+
                 client = tcpListener.AcceptTcpClient() ;
-                secondClient = secondTcpListener.AcceptTcpClient();
+                getClient = getTcpListener.AcceptTcpClient();
+                giveClient = giveTcpListener.AcceptTcpClient();
+
                 Console.WriteLine("Bone Connected") ;
                 networkStream = client.GetStream();
-                secondStream = secondClient.GetStream();
+                getStream = getClient.GetStream();
+                giveStream = giveClient.GetStream();
+
                 streamwriter = new StreamWriter(networkStream);
                 streamreader = new StreamReader(networkStream);
+                incomingThread = new Thread(receiveBytes);
+                incomingThread.Start();
             }
             catch(Exception e)
             {
@@ -106,12 +134,15 @@ namespace ECEServer {
         public bool disconnect() {
             Console.WriteLine("Bone Disconnecting...");
             sendData("bye");
+            incomingThread.Abort();
             client.Close();
-            secondClient.Close();
+            getClient.Close();
+            giveClient.Close();
             streamwriter.Close();
             streamreader.Close();
             networkStream.Close();
-            secondStream.Close();
+            getStream.Close();
+            giveStream.Close();
             return true;
         }
 
@@ -130,7 +161,7 @@ namespace ECEServer {
                 string message = streamreader.ReadLine();
                 while(message != "TransmitOver:"){
                     devices.Add(int.Parse(message));
-                    message = streamreader.ReadLine();
+                    message = getData();
                 }
                 return devices;
             }
@@ -140,16 +171,20 @@ namespace ECEServer {
         public void usbTest() {
             sendData("medic:");
             Console.WriteLine("Waiting for data to be generated...");
-            string msg = streamreader.ReadLine();
+            string msg = getData();
             Console.WriteLine("Saving data to file: " + msg);
             saveFile(msg);
+        }
+
+        protected string getData() {
+            return streamreader.ReadLine();
         }
 
         public string getPID(int device) {
             sendData("PID:");
             sendData("" + device);
             Console.WriteLine("Waiting on PID...");
-            string pid = streamreader.ReadLine();
+            string pid = getData();
             return pid;
         }
 
@@ -157,7 +192,7 @@ namespace ECEServer {
             sendData("VID:");
             sendData("" + device);
             Console.WriteLine("Waiting on VID...");
-            string vid = streamreader.ReadLine();
+            string vid = getData();
             return vid;
         }
 
@@ -171,26 +206,32 @@ namespace ECEServer {
             have already received data. This will fetch the waiting 
             data from the bone and return it in a byte[]
         */
-        public byte[] receiveBytes(int device) {
-            if(isConnected()) {
-                sendData("RECEIVE:");
-                byte[] result = new byte[32];
-                secondStream.Read(result, 0, 32);
-                OnBytesReceived(this, new ByteEventArgs(device, result));
-                return result;
+        protected void receiveBytes() {
+            StreamReader reader = new StreamReader(getStream);
+            int device;
+            int size;
+            try {
+                while (true) {
+                    device = int.Parse(reader.ReadLine());
+                    size = int.Parse(reader.ReadLine());
+                    byte[] result = new byte[size];
+                    getStream.Read(result, 0, size);
+                    OnBytesReceived(this, new ByteEventArgs(device, result));
+                }
+            } catch (Exception e) {
+                Console.WriteLine("I caught an error:" + e.GetType().FullName);
             }
-            return null;
         }
 
 
         protected void saveFile(string fileName) {
-            string servermessage = streamreader.ReadLine();
+            string servermessage = getData();
             ArrayList lines = new ArrayList();
             while(servermessage != "TransmitOver:"){
                 lines.Add(servermessage);
-                servermessage = streamreader.ReadLine();
+                servermessage = getData();
             }
-            string[] myArr = (string[]) lines.ToArray( typeof( string ) );
+            string[] myArr = (string[]) lines.ToArray(typeof(string));
             System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + @"/" + fileName, myArr);
         }
 
@@ -206,11 +247,12 @@ namespace ECEServer {
             id: integer identifying the specific medical device to 
             send the byte[] to. 
         */
-        protected void sendBytes(int id, byte[] data) {
+        public void sendBytes(int id, byte[] data) {
+            sendData("GOTBYTE:");
             sendData(id + "");
+            sendData("" + data.Length);
             // need to actually get real bytes here
-            // Console.WriteLine(secondStream.CanWrite);
-            secondStream.Write(data, 0, 32);
+            giveStream.Write(data, 0, 32);
         }
 
         /*
@@ -257,7 +299,6 @@ namespace ECEServer {
         }
 
         public void testSendBytes(int id) {
-            sendData("GOTBYTE:");
             byte[] bytes =  new byte[32] {0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x50, 0x20, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32};
             sendBytes(id, bytes);
         }

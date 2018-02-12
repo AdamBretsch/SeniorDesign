@@ -9,23 +9,24 @@ ser = serial.Serial(port = "/dev/ttyS2", baudrate = 38400)
 ser.close()
 ser.open()
 
-values = ''.join(chr(x) for x in [0xE2,0x11,0x2,0x00,0x00,0x23])
+# Teensy 1 ----- 22, 0 ------ 21
+
+values = ''.join(chr(x) for x in [0xE2,0x11,0x20,0x00,0x00,0x23])
 if ser.isOpen():
     print "Serial is Open!"
-   
-    i = 0;
+    i = 0
     for i in range(0,6):
         ser.write(values[i])
     time.sleep(1)
     out = ''
     hexout = ''
-   # while True:
-    #    bytesToRead = ser.inWaiting()
-     #   out = ser.read(bytesToRead)
-      #  print out
-       # break
-    while ser.inWaiting() >= 1:
-        out = ser.read(1)
-        hexout = hexout + out
+    
+    while ser.inWaiting() >= 1 and len(hexout) < 192:
+        out = ser.read(2)
+        hexout = hexout + out + "\n"
     print hexout
 ser.close()
+f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/DataFromTennsyFromPort2.txt","a+")
+f.write(hexout + "\r\n")
+f.close()
+
