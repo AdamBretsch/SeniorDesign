@@ -5,6 +5,7 @@ import thread
 import time
 import binascii
 import keyboard
+import os
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -20,29 +21,18 @@ class Watcher:
         event_handler = Handler()
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH,recursive = True)
         print "watchdog started"
-        self.observer.start()
-        try:
-            while True:
-                message = raw_input("type in 'stop/pause watching' to stop \n" )
-                
-                if(message == "pause watching"):
-                    self.observer.stop()
-                    time.sleep(10)
-                    self.observer.start()
-                elif(message == "stop watching"):
-                    self.observer.stop()
-                    break
-                    
+        try: 
+            self.observer.start()
+            time.sleep(5)
+            serialReceive(ser)
+            
         except KeyboardInterrupt:
                 self.observer.stop()
                 print "Exiting"
                 
         self.observer.join()
         
-    def stop(self):
-        self.observer.stop()
-
-
+        
 class Handler(FileSystemEventHandler):
     @staticmethod
     def on_any_event(event):
@@ -55,7 +45,6 @@ class Handler(FileSystemEventHandler):
             contents = f.readlines()
             for i in range(0,len(contents)):
                 ser.write(contents[i])
-                print contents[i]
             time.sleep(1)
         # writing the information to teensy
             
@@ -67,8 +56,8 @@ def serialReceive(ser):
         while ser.inWaiting() >= 1 and len(hexout) < 192:
             out = ser.read(2)
             hexout = hexout + out + "\n"
-        print hexout
-    ser.close()
+    if os.path.exists("DataFromTennsyFromPort2.txt"):
+        os.remove("DataFromTennsyFromPort2.txt")
     f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/DataFromTennsyFromPort2.txt","a+")
     f.write(hexout + "\r\n")
     f.close()
@@ -78,9 +67,9 @@ if __name__ == '__main__':
     ser = serial.Serial(port = "/dev/ttyS2", baudrate = 38400)
     w = Watcher()
     w.run()
-    # thread.start_new_thread(serialReceive(),(ser))
-    serialReceive(ser);
+    
     
     # serial will only read information once but we can add a loop for that easily.
     
     
+

@@ -27,10 +27,10 @@ public class TrialEventHandler {
     [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
     public TrialEventHandler() {
         // TODO: Add "/folder" to string path if you want this to watch the /folder directory
-    	string path = Directory.GetCurrentDirectory();
+    	string path = "/home/debian/SeniorDesign/teensyTransfer/pyWrite/";
     	FileSystemWatcher watcher = new FileSystemWatcher();
         watcher.Path = path;
-        /* Watch for changes in LastAccess and LastWrite times, and
+        /* Watch for changes in LastAccess and LastWrite times, and     
            the renaming of files or directories. */
         watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
         // Only watch text files.
@@ -47,7 +47,9 @@ public class TrialEventHandler {
     	Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
         string[] stringData = System.IO.File.ReadAllLines(e.FullPath);
         byte[] data = new byte[stringData.Length];
-        for(int i = 0; i < data.Length; i++) {
+        Console.WriteLine("here: " + stringData.Length);
+
+        for(int i = 0; i < stringData.Length; i++) {
             data[i] = Byte.Parse(stringData[i].Trim(), NumberStyles.AllowHexSpecifier);
             Console.WriteLine("string:" + stringData[i]);
             Console.WriteLine("byte:" + data[i].ToString("X"));

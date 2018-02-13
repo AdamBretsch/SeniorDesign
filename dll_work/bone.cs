@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Collections;
 using System.Security.Permissions;
 using System.Globalization;
+using System.Threading;
 public class ClientSocket {
     
     protected NetworkStream networkStream; 
@@ -33,7 +34,7 @@ public class ClientSocket {
         watcher = new FileSystemWatcher(path);
         watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
         watcher.Filter = "*.txt";
-        watcher.Changed += new FileSystemEventHandler(OnFileChanged);
+        // watcher.Changed += new FileSystemEventHandler(OnFileChanged);
         watcher.Created += new FileSystemEventHandler(OnFileChanged);
         watcher.EnableRaisingEvents = true;
     }
@@ -108,7 +109,11 @@ public class ClientSocket {
                     case "green":
                         runScript("usr2.sh");
                         break;
-                    
+                    case "watchdogs":
+                        Thread th = new Thread(watchdog);
+                        th.Start();
+                        break;
+                        
                     default:
                         Console.WriteLine("Host: " + servermessage);
                         break;
@@ -168,8 +173,9 @@ public class ClientSocket {
         byte[] data = new byte[stringData.Length];
         for(int i = 0; i < stringData.Length; i++) {
             data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
+            Console.WriteLine(data[i]);
         }
-        sendPyBytes(data);
+        ((ClientSocket) source).sendBytes(0,data);
     }
     
     protected void receiveBytes() {
@@ -263,5 +269,9 @@ public class ClientSocket {
         } else if(onOrOff == "off:") {
             // turn thing with id 'device' off
         }
+    }
+    
+    protected void watchdog() {
+        runScript("demo.py");
     }
 } 
