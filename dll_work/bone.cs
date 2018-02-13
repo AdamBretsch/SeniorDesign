@@ -34,7 +34,7 @@ public class ClientSocket {
         watcher = new FileSystemWatcher(path);
         watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
         watcher.Filter = "*.txt";
-        // watcher.Changed += new FileSystemEventHandler(OnFileChanged);
+        watcher.Changed += new FileSystemEventHandler(OnFileChanged);
         watcher.Created += new FileSystemEventHandler(OnFileChanged);
         watcher.EnableRaisingEvents = true;
     }
@@ -171,11 +171,12 @@ public class ClientSocket {
         Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
         string[] stringData = System.IO.File.ReadAllLines(e.FullPath);
         byte[] data = new byte[stringData.Length];
+        Console.WriteLine("here" + data[1]);
         for(int i = 0; i < stringData.Length; i++) {
             data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
             Console.WriteLine(data[i]);
         }
-        ((ClientSocket) source).sendBytes(0,data);
+        ((ClientSocket) source).sendBytes(data);
     }
     
     protected void receiveBytes() {
@@ -209,9 +210,8 @@ public class ClientSocket {
         System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + @"/temp.txt", myArr);
     }
 
-    protected void sendBytes(int device, byte[] byteArray) {
+    protected void sendBytes( byte[] byteArray) {
         // need to actually get real bytes here
-        sendwriter.WriteLine("" + device);
         sendwriter.WriteLine(byteArray.Length);
         sendStream.Write(byteArray, 0, byteArray.Length);
     }

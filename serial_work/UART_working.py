@@ -5,7 +5,7 @@ import time
 import binascii
 
 UART.setup("UART2")
-ser = serial.Serial(port = "/dev/ttyS2", baudrate = 38400)
+ser = serial.Serial(port = "/dev/ttyS2", baudrate = 9600)
 ser.close()
 ser.open()
 

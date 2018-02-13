@@ -4,7 +4,6 @@ import serial
 import thread
 import time
 import binascii
-import keyboard
 import os
 
 from watchdog.observers import Observer
@@ -19,12 +18,16 @@ class Watcher:
         
     def run(self):
         event_handler = Handler()
+        flag = 0
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH,recursive = True)
         print "watchdog started"
         try: 
             self.observer.start()
             time.sleep(5)
-            serialReceive(ser)
+            while flag < 10:
+                serialReceive(ser)
+                time.sleep(1)
+                flag = flag + 1
             
         except KeyboardInterrupt:
                 self.observer.stop()
@@ -50,21 +53,23 @@ class Handler(FileSystemEventHandler):
             
 def serialReceive(ser):
     if ser.isOpen():
-        print "Serial is Open!"
+        ser.flush()
         out = ''
         hexout = ''
+        flag = True;
         while ser.inWaiting() >= 1 and len(hexout) < 192:
             out = ser.read(2)
             hexout = hexout + out + "\n"
-    if os.path.exists("DataFromTennsyFromPort2.txt"):
-        os.remove("DataFromTennsyFromPort2.txt")
+    # if os.path.exists("DataFromTennsyFromPort2.txt"):
+    #     os.remove("DataFromTennsyFromPort2.txt")
     f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/DataFromTennsyFromPort2.txt","a+")
     f.write(hexout + "\r\n")
     f.close()
 
 if __name__ == '__main__':
     UART.setup("UART2")
-    ser = serial.Serial(port = "/dev/ttyS2", baudrate = 38400)
+    ser = serial.Serial(port = "/dev/ttyS2", baudrate = 9600)
+    time.sleep(2)
     w = Watcher()
     w.run()
     
