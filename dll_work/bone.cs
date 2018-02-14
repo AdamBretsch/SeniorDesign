@@ -170,13 +170,14 @@ public class ClientSocket {
     private static void OnFileChanged(object source, FileSystemEventArgs e) {
         Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
         string[] stringData = System.IO.File.ReadAllLines(e.FullPath);
-        byte[] data = new byte[stringData.Length];
-        Console.WriteLine("here" + data[1]);
-        for(int i = 0; i < stringData.Length; i++) {
-            data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
-            Console.WriteLine(data[i]);
+        // for(int i = 0; i < stringData.Length; i++) {
+        //     data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
+        // }
+        for(int i = 0;i<stringData.Length;i++){
+            Console.WriteLine("make it work god damn it" + stringData[i]);
+            sendData(stringData[i]);
         }
-        ((ClientSocket) source).sendBytes(data);
+        
     }
     
     protected void receiveBytes() {

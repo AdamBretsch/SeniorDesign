@@ -46,8 +46,13 @@ class Handler(FileSystemEventHandler):
             
             f = open(event.src_path,"r+")
             contents = f.readlines()
-            for i in range(0,len(contents)):
-                ser.write(contents[i])
+            for k in range(0,len(contents)):
+            #     if contents[k] != '\n':
+            #         values[k] = int(contents[k])
+            # values_1 = ''.join(chr(x) for x in (values))
+            # for i in range(0,len(values)):
+                # ser.write(values_1[i])
+                ser.write(contents[k])
             time.sleep(1)
         # writing the information to teensy
             
