@@ -15,17 +15,17 @@ public class ClientSocket {
 
     protected StreamReader streamreader; 
     protected StreamWriter streamwriter;
-    protected StreamWriter sendwriter;
+    // protected StreamWriter sendwriter;
     protected StreamReader getreader;
-
-
+    protected static ClientSocket cs;
+    
     protected FileSystemWatcher watcher;
 
     protected string servermessage = "";
     protected byte[] bytes =  new byte[32] {0x20, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x50};
     
     public static void Main(string[] args) {
-        ClientSocket cs = new ClientSocket();
+        ClientSocket cis = new ClientSocket();
     }
 
     [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
@@ -34,7 +34,7 @@ public class ClientSocket {
         watcher = new FileSystemWatcher(path);
         watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
         watcher.Filter = "*.txt";
-        watcher.Changed += new FileSystemEventHandler(OnFileChanged);
+        // watcher.Changed += new FileSystemEventHandler(OnFileChanged);
         watcher.Created += new FileSystemEventHandler(OnFileChanged);
         watcher.EnableRaisingEvents = true;
     }
@@ -63,10 +63,11 @@ public class ClientSocket {
 
         streamreader = new StreamReader(networkStream) ; 
         streamwriter = new StreamWriter(networkStream) ;
-        sendwriter = new StreamWriter(sendStream);
+        // sendwriter = new StreamWriter(sendStream);
         getreader = new StreamReader(getStream);
         Console.WriteLine("Streams Created");
         configureWatcher();
+        ClientSocket.cs = this;
         try 
         { 
             // this while loop recieves commands for the duration
@@ -93,6 +94,9 @@ public class ClientSocket {
                         break;
                     case "POWER:":
                         turnPower();
+                        break;
+                    case "RELAY:":
+                        relay();
                         break;
                     case "medic:":
                         getMedData();
@@ -154,30 +158,48 @@ public class ClientSocket {
     }
 
     protected void getPID() {
-        int device = int.Parse(getData());
+        // int device = int.Parse(getData());
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         // need to get real pid here
         sendData(lines[1]);
     }
     
     protected void getVID() {
-        int device = int.Parse(getData());
+        // int device = int.Parse(getData());
         string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + @"/vid.txt");
         // need to get real vid here
         sendData(lines[0]);
     }
 
     private static void OnFileChanged(object source, FileSystemEventArgs e) {
-        Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
+        Console.WriteLine("Bone.cs says file: " + e.FullPath + " " + e.ChangeType);
+        // values read from file will be in stringData
         string[] stringData = System.IO.File.ReadAllLines(e.FullPath);
-        // for(int i = 0; i < stringData.Length; i++) {
-        //     data[i] = Byte.Parse(stringData[i], NumberStyles.AllowHexSpecifier);
-        // }
-        for(int i = 0;i<stringData.Length;i++){
-            Console.WriteLine("make it work god damn it" + stringData[i]);
-            sendData(stringData[i]);
+        string tried;
+        byte thing;
+        byte[] data = new byte[stringData.Length];
+
+        for (int i = 0; i < stringData.Length; i++) {
+            // Console.Write("Line[" + i + "]:. " + stringData[i]);
+            tried = stringData[i].Trim();
+            if (tried != "") {
+                thing = Byte.Parse(stringData[i].Trim(), NumberStyles.AllowHexSpecifier);   
+                data[i] = thing;
+                // Console.WriteLine("->" + thing.ToString("X"));
+            } else {
+                Console.WriteLine("->Empty");
+                data[i] = 0x00;
+            }
         }
-        
+        Console.WriteLine("make it work god damn it" + stringData[0]);
+        for(int i = 0;i<stringData.Length;i++){
+            // prints each byte in original string and compares to the converted byte
+            Console.Write(stringData[i] + " : versus : ");
+            Console.WriteLine(data[i].ToString("X"));
+        }
+        // send byte[] as byte[] to control computer
+        Console.WriteLine(source.GetType().Name);
+        ClientSocket.cs.sendBytes(2,data);
     }
     
     protected void receiveBytes() {
@@ -191,6 +213,14 @@ public class ClientSocket {
             Console.WriteLine(result[i].ToString("X"));
         }
         sendPyBytes(result);
+    }
+    
+    protected void relay() {
+        Console.WriteLine("IN RELAY");
+        byte[] thing = new byte[6] {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+        sendStream.WriteByte(18);
+        sendStream.WriteByte(Convert.ToByte(thing.Length));
+        sendStream.Write(thing, 0, thing.Length);
     }
 
     protected void runScript(string shell) {
@@ -211,9 +241,14 @@ public class ClientSocket {
         System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + @"/temp.txt", myArr);
     }
 
-    protected void sendBytes( byte[] byteArray) {
-        // need to actually get real bytes here
-        sendwriter.WriteLine(byteArray.Length);
+    protected void sendBytes(int device, byte[] byteArray) {
+        // sends device id that had the data originally
+        // sendwriter.WriteLine("" + device);
+        // sends the length to expect as (string) int
+        // sendwriter.WriteLine("" + byteArray.Length);
+        // directly send byteArray to control computer
+        sendStream.WriteByte(Convert.ToByte(device));
+        sendStream.WriteByte(Convert.ToByte(byteArray.Length));
         sendStream.Write(byteArray, 0, byteArray.Length);
     }
     
@@ -243,11 +278,12 @@ public class ClientSocket {
 
     protected static void sendPyBytes(byte[] data) {
         string path = "/home/debian/SeniorDesign/teensyTransfer/csWrite/out.txt";
-        string[] converted = new string[data.Length];
+        // string[] converted = new string[data.Length];
+        string convert = "";
         for (int i = 0; i < data.Length; i++) {
-            converted[i] = data[i].ToString("X");
+            convert += data[i].ToString("X") + "\n";
         }
-        System.IO.File.WriteAllLines(path, converted);
+        System.IO.File.WriteAllText(path, convert);
     }
 
     protected void turnPower() {
@@ -259,20 +295,23 @@ public class ClientSocket {
             Console.WriteLine("Invalid device Specified");
         }
         //temporary here
-        if(id != 1) {
-            Console.WriteLine("Usually this would work, but only the shell script for usr0.sh is present");
-            return;
-        }
-        string script = "usr" + (id-1) + ".sh";
-        runScript(script);
-        if(onOrOff == "on:") {
-            // turn thing with id 'device' on
-        } else if(onOrOff == "off:") {
-            // turn thing with id 'device' off
-        }
+        runScript("usr0.sh");
     }
     
     protected void watchdog() {
-        runScript("demo.py");
+        
+        new Thread(() => 
+        {
+            Thread.CurrentThread.IsBackground = true; 
+            runScript("pyScript_PORT1.py");
+        }).Start();
+        
+        new Thread(() => 
+        {
+            Thread.CurrentThread.IsBackground = true; 
+            runScript("pyScript_PORT2.py");
+        }).Start();
+
+        
     }
 } 

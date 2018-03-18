@@ -8,7 +8,10 @@ import os
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-# Teensy 1 ----- 22, 0 ------ 21
+
+# Teensy port 1 0 ----- 24, 1 ---- 26
+
+
 
 class Watcher:
     DIRECTORY_TO_WATCH = "/home/debian/SeniorDesign/teensyTransfer/csWrite"
@@ -20,11 +23,11 @@ class Watcher:
         event_handler = Handler()
         flag = 0
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH,recursive = True)
-        print "watchdog started"
+        print "watchdog_port1 started"
         try: 
             self.observer.start()
-            time.sleep(5)
-            while flag < 10:
+            time.sleep(10)
+            while flag < 20:
                 serialReceive(ser)
                 time.sleep(1)
                 flag = flag + 1
@@ -47,13 +50,8 @@ class Handler(FileSystemEventHandler):
             f = open(event.src_path,"r+")
             contents = f.readlines()
             for k in range(0,len(contents)):
-            #     if contents[k] != '\n':
-            #         values[k] = int(contents[k])
-            # values_1 = ''.join(chr(x) for x in (values))
-            # for i in range(0,len(values)):
-                # ser.write(values_1[i])
                 ser.write(contents[k])
-            time.sleep(1)
+            time.sleep(5)
         # writing the information to teensy
             
 def serialReceive(ser):
@@ -65,15 +63,14 @@ def serialReceive(ser):
         while ser.inWaiting() >= 1 and len(hexout) < 192:
             out = ser.read(2)
             hexout = hexout + out + "\n"
-    # if os.path.exists("DataFromTennsyFromPort2.txt"):
-    #     os.remove("DataFromTennsyFromPort2.txt")
-    f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/DataFromTennsyFromPort2.txt","a+")
+
+    f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/DataFromTennsyFromPort1.txt","a+")
     f.write(hexout + "\r\n")
     f.close()
 
 if __name__ == '__main__':
-    UART.setup("UART2")
-    ser = serial.Serial(port = "/dev/ttyS2", baudrate = 9600)
+    UART.setup("UART1")
+    ser = serial.Serial(port = "/dev/ttyS1", baudrate = 38400)
     time.sleep(2)
     w = Watcher()
     w.run()
