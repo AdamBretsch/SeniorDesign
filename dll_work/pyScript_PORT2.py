@@ -20,17 +20,17 @@ class Watcher:
         
     def run(self):
         event_handler = Handler()
-        flag = 0
+        # flag = 0
+        flag = True
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH,recursive = True)
         print "watchdog_port2 started"
         try: 
             self.observer.start()
-            time.sleep(10)
-            while flag < 20:
+            time.sleep()
+            while flag:
                 serialReceive(ser)
-                time.sleep(1)
-                flag = flag + 1
-            
+                time.sleep(10)
+
         except KeyboardInterrupt:
                 self.observer.stop()
                 print "Exiting"
@@ -74,7 +74,7 @@ def serialReceive(ser):
 
 if __name__ == '__main__':
     UART.setup("UART2")
-    ser = serial.Serial(port = "/dev/ttyS2", baudrate = 38400)
+    ser = serial.Serial(port = "/dev/ttyS2", baudrate = 9600)
     time.sleep(2)
     w = Watcher()
     w.run()

@@ -7,7 +7,7 @@ using System.Collections;
 using System.Security.Permissions;
 using System.Globalization;
 using System.Threading;
-// using CSSerialLibrary;
+using CSSerialLibrary;
 
 public class ClientSocket {
     
@@ -39,18 +39,18 @@ public class ClientSocket {
         // watcher.Changed += new FileSystemEventHandler(OnFileChanged);
         watcher.Created += new FileSystemEventHandler(OnFileChanged);
         watcher.EnableRaisingEvents = true;
-        // Teensy t = new Teensy("/dev/ttyO2", 9600, SerialDataReceivedEventHandler);
+        Teensy t = new Teensy("/dev/ttyO2", 9600, SerialDataReceivedEventHandler);
         
     }
-//     	private static void SerialDataReceivedEventHandler( object sender, SerialDataReceivedEventArgs e) {
-// 	        SerialPort sport = (SerialPort) sender;
-// 	        byte[] data = new byte[64];
-// 			sport.Read(data, 0, 64);
-// 	        Console.WriteLine("Data Received");
-// 	        for (int i = 0; i < data.Length; i++) {
-// 	        	Console.WriteLine("Data[{0}] = " + data[i].ToString("X2"), i);
-// 	        }
-// 	    }
+    	private static void SerialDataReceivedEventHandler( object sender, SerialDataReceivedEventArgs e) {
+	        SerialPort sport = (SerialPort) sender;
+	        byte[] data = new byte[64];
+			sport.Read(data, 0, 64);
+	        Console.WriteLine("Data Received");
+	        for (int i = 0; i < data.Length; i++) {
+	        	Console.WriteLine("Data[{0}] = " + data[i].ToString("X2"), i);
+	        }
+	    }
     
     [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
     public ClientSocket() { 
