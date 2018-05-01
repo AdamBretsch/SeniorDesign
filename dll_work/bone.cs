@@ -31,26 +31,19 @@ public class ClientSocket {
     }
 
     [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
-    private void configureWatcher() {
-        string path = "/home/debian/SeniorDesign/teensyTransfer/pyWrite";
+    private void configureWatcher(String path) {
+        
         watcher = new FileSystemWatcher(path);
         watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
         watcher.Filter = "*.txt";
-        // watcher.Changed += new FileSystemEventHandler(OnFileChanged);
+        watcher.Changed += new FileSystemEventHandler(OnFileChanged);
         watcher.Created += new FileSystemEventHandler(OnFileChanged);
         watcher.EnableRaisingEvents = true;
-        // Teensy t = new Teensy("/dev/ttyO2", 9600, SerialDataReceivedEventHandler);
         
+
+
     }
-//     	private static void SerialDataReceivedEventHandler( object sender, SerialDataReceivedEventArgs e) {
-// 	        SerialPort sport = (SerialPort) sender;
-// 	        byte[] data = new byte[64];
-// 			sport.Read(data, 0, 64);
-// 	        Console.WriteLine("Data Received");
-// 	        for (int i = 0; i < data.Length; i++) {
-// 	        	Console.WriteLine("Data[{0}] = " + data[i].ToString("X2"), i);
-// 	        }
-// 	    }
+
     
     [PermissionSet(SecurityAction.Demand, Name="FullTrust")]
     public ClientSocket() { 
@@ -79,7 +72,12 @@ public class ClientSocket {
         // sendwriter = new StreamWriter(sendStream);
         getreader = new StreamReader(getStream);
         Console.WriteLine("Streams Created");
-        configureWatcher();
+        configureWatcher("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_1");
+        configureWatcher("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_2");
+        configureWatcher("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_4");
+        configureWatcher("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_5");
+           
+        
         ClientSocket.cs = this;
         try 
         { 
@@ -200,23 +198,31 @@ public class ClientSocket {
                 data[i] = thing;
                 // Console.WriteLine("->" + thing.ToString("X"));
             } else {
-                Console.WriteLine("->Empty");
                 data[i] = 0x00;
             }
         }
-        Console.WriteLine("make it work god damn it" + stringData[0]);
-        for(int i = 0;i<stringData.Length;i++){
-            // prints each byte in original string and compares to the converted byte
-            Console.Write(stringData[i] + " : versus : ");
-            Console.WriteLine(data[i].ToString("X"));
+
+        int device_id = 0;
+        if (e.FullPath.Contains("1")) {
+            device_id = 1;
+        }
+        if (e.FullPath.Contains("2")) {
+            device_id = 2;
+        }
+        if (e.FullPath.Contains("4")) {
+            device_id = 4;
+        }
+        if (e.FullPath.Contains("5")) {
+            device_id = 5;
         }
         // send byte[] as byte[] to control computer
         Console.WriteLine(source.GetType().Name);
-        ClientSocket.cs.sendBytes(2,data);
+        ClientSocket.cs.sendBytes(device_id,data);
     }
     
     protected void receiveBytes() {
         string device = getData();
+        int device_number = int.Parse(device);
         int size = int.Parse(getData());
         byte[] result = new byte[size];
         getStream.Read(result, 0, size);
@@ -225,7 +231,7 @@ public class ClientSocket {
         for(int i = 0; i < size; i++) {
             Console.WriteLine(result[i].ToString("X"));
         }
-        sendPyBytes(result);
+        sendPyBytes(device_number,result);
     }
     
     protected void relay() {
@@ -289,8 +295,8 @@ public class ClientSocket {
         return true;
     }
 
-    protected static void sendPyBytes(byte[] data) {
-        string path = "/home/debian/SeniorDesign/teensyTransfer/csWrite/out.txt";
+    protected static void sendPyBytes(int device, byte[] data) {
+        string path = "/home/debian/SeniorDesign/teensyTransfer/csWrite/PORT_"+ device + "/out.txt";
         // string[] converted = new string[data.Length];
         string convert = "";
         for (int i = 0; i < data.Length; i++) {
@@ -324,7 +330,14 @@ public class ClientSocket {
             Thread.CurrentThread.IsBackground = true; 
             runScript("pyScript_PORT2.py");
         }).Start();
-
         
+        new Thread(() => 
+        {
+            Thread.CurrentThread.IsBackground = true; 
+            runScript("pyScript_PORT4.py");
+        }).Start();
+        
+       
+        runScript("pyScript_PORT5.py");
     }
 } 

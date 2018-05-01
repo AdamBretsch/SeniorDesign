@@ -9,12 +9,12 @@ import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# Teensy port 1 0 ----- 24, 1 ---- 26
+# Teensy port 1 0 ----- 13, 1 ---- 11
 
 
 
 class Watcher:
-    DIRECTORY_TO_WATCH = "/home/debian/SeniorDesign/teensyTransfer/csWrite/PORT_1"
+    DIRECTORY_TO_WATCH = "/home/debian/SeniorDesign/teensyTransfer/csWrite/PORT_4"
     
     def __init__(self):
         self.observer = Observer()
@@ -24,7 +24,7 @@ class Watcher:
         # flag = 0
         flag = True
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH,recursive = True)
-        print "watchdog_port1 started"
+        print "watchdog_port4 started"
         try: 
             self.observer.start()
             time.sleep(5)
@@ -68,15 +68,15 @@ def serialReceive(ser):
             out = ser.read(2)
             hexout = hexout + out + "\n"
 
-    f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_1/DataFromTennsyFromPort1.txt","w")
+    f = open("/home/debian/SeniorDesign/teensyTransfer/pyWrite/PORT_4/DataFromTennsyFromPort4.txt","w")
     f.write(hexout + "\r\n")
     f.close()
     ser.close()
     ser.open()
     
 if __name__ == '__main__':
-    UART.setup("UART1")
-    ser = serial.Serial(port = "/dev/ttyS1", baudrate = 38400)
+    UART.setup("UART4")
+    ser = serial.Serial(port = "/dev/ttyS4", baudrate = 38400)
     time.sleep(2)
     w = Watcher()
     w.run()
