@@ -11,3 +11,4 @@ These are the two working directories for the two team's work.
 ./serial_work is used for debugging UART communication.
 ./teensyTransfer/pyWrite is used for the Python script to write information to.
 ./dll_work has all the files up to date.
+exportGPIO.sh is a script which exports all the serial ports so that they are able to be controlled.
